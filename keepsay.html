@@ -1,0 +1,38 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Keepsay · Voice studio</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f8f5ee;color:#292624;font:17px/1.55 system-ui,sans-serif}main,header{max-width:680px;margin:auto;padding:20px}header{border-bottom:1px solid #c7bdb2;font: bold 26px Georgia;color:#7d322b}h1{font:normal clamp(34px,6vw,48px)/1.12 Georgia;margin:14px 0}p{margin:8px 0 16px}fieldset{background:#fffdf9;border:1px solid #c9bfb5;border-radius:12px;padding:18px;margin:22px 0}legend{font-weight:700;padding:0 6px}label{display:block;margin:10px 0}button,input,textarea{font:inherit}input[type=file],textarea{width:100%}textarea,input[type=number]{border:1px solid #897c70;border-radius:5px;padding:9px}input[type=number]{width:100px}button{padding:10px 18px;border:1px solid #793a32;color:#fff;background:#793a32;border-radius:7px;cursor:pointer}button.secondary{background:transparent;color:#66372d}button:disabled{opacity:.55;cursor:default}:focus-visible{outline:3px solid #1767a0;outline-offset:3px}audio{width:100%}small{display:block}#status{min-height:1.6em;font-weight:600}section{margin-bottom:1em}
+button:hover:enabled{filter:brightness(.9)} input[type=file]::file-selector-button{padding:9px 14px;border:1px solid #897c70;border-radius:6px;background:#f8f5ee;margin-right:10px} #result:not(:empty){padding:16px 20px;background:#e8eee5;border-radius:12px} #result p{font-weight:650} .counter{float:right;font-variant-numeric:tabular-nums} @media(max-width:440px){main,header{padding:16px}fieldset{padding:14px}} </style><header>Keepsay</header><main><h1>Hear a familiar voice.</h1><p>Turn a written message into a keepsake using a recording you have permission to use.</p>
+<form id="studio"><fieldset><legend>1 · Choose a voice</legend><label><input type="checkbox" id="permission" required> I have the right to use this person’s voice and permission to send the sample to Sarvam for synthesis.</label>
+<label for="file">Audio or video recording</label><input id="file" type="file" accept="audio/*,video/*,.opus,.m4a,.mkv" required><small>Up to 64 MB. Choose one person speaking clearly, without music.</small>
+<label for="start">Start at second <input type="number" id="start" value="0" min="0" max="86400" step=".1"></label>
+<button type="button" class="secondary" id="prepare">Preview voice sample</button><div id="preview"></div></fieldset>
+<fieldset><legend>2 · Write the message</legend><label for="message">Words to read aloud <small class="counter" id="count" aria-hidden="true">0 / 1,000</small></label><textarea id="message" rows="3" maxlength="1000" required placeholder="I’m thinking of you today."></textarea><small>Up to 1,000 characters. Your words are sent as written.</small></fieldset>
+<button id="generate">Create spoken message</button> <button type="reset" class="secondary">Clear</button></form>
+<p id="status" role="status" aria-live="polite"></p><section id="result"></section></main>
+<script>
+const get=id=>document.getElementById(id), form=get('studio'), statusText=get('status');
+let clip=null, previewUrl='', resultUrl='', pending=null;
+function clearResult(){get('result').replaceChildren();URL.revokeObjectURL(resultUrl);resultUrl=''}
+function invalidate(){pending?.abort();clip=null;clearResult();get('preview').replaceChildren();URL.revokeObjectURL(previewUrl);previewUrl='';statusText.textContent=''}
+for(const id of ['file','start','permission'])get(id).addEventListener('input',invalidate);
+get('message').oninput=()=>{get('count').textContent=get('message').value.length+' / 1,000';pending?.abort();clearResult();statusText.textContent=''};
+form.onreset=()=>{invalidate();get('count').textContent='0 / 1,000'};
+function player(container,url,label){const title=document.createElement('p'),audio=document.createElement('audio');title.textContent=label;audio.src=url;audio.controls=true;audio.setAttribute('aria-label',label);container.replaceChildren(title,audio)}
+async function checked(response){if(!response.ok){const data=await response.json().catch(()=>({}));throw Error(data.detail||'Request failed. Please try again.')}return response.blob()}
+async function prepare(signal){
+ for(const id of ['permission','file','start'])if(!get(id).reportValidity())throw Error('Check the recording and permission above.');
+ const file=get('file').files[0];if(file.size>64*1024*1024)throw Error('Choose a file smaller than 64 MB.');
+ statusText.textContent='Preparing the voice sample on this computer…';
+ clip=await checked(await fetch('/clip?start='+get('start').value,{method:'POST',headers:{'x-keepsay':'1','x-voice-permission':'yes'},body:file,signal}));
+ URL.revokeObjectURL(previewUrl);previewUrl=URL.createObjectURL(clip);player(get('preview'),previewUrl,'Selected voice sample');statusText.textContent='Sample ready. Listen to check that you hear one clear voice.';
+}
+async function run(task){if(pending)return;const controller=new AbortController();pending=controller;get('generate').disabled=get('prepare').disabled=true;try{await task(controller.signal)}catch(e){if(e.name!=='AbortError')statusText.textContent=e.message}finally{pending=null;get('generate').disabled=get('prepare').disabled=false}}
+get('prepare').onclick=()=>run(prepare);
+form.onsubmit=e=>{e.preventDefault();run(async signal=>{
+ clearResult();if(!clip)await prepare(signal);
+ const bytes=new Uint8Array(await clip.arrayBuffer());let binary='';for(let i=0;i<bytes.length;i+=8192)binary+=String.fromCharCode(...bytes.subarray(i,i+8192));
+ statusText.textContent='Creating AI-generated speech…';
+ const out=await checked(await fetch('/speak',{method:'POST',signal,headers:{'Content-Type':'application/json','x-keepsay':'1'},body:JSON.stringify({text:get('message').value,permission:get('permission').checked,clip:btoa(binary)})}));
+ resultUrl=URL.createObjectURL(out);player(get('result'),resultUrl,'AI-generated message');statusText.textContent='Your message is ready. Press play to listen.';
+})};
+</script></html>
