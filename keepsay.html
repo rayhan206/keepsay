@@ -31,10 +31,10 @@ audio{width:100%}small{display:block;color:#62544b;margin-top:5px}
 #status{min-height:1.6em;font-weight:600}
 #result:not(:empty){padding:14px 20px;background:#e2ebdf;border-radius:12px}
 #result p{margin:0 0 8px;font-weight:650}
-</style><header><svg aria-hidden="true" viewBox="0 0 32 32"><rect width="32" height="32" rx="9" fill="currentColor"/><path d="M6 15v3m5-8v13m5-17v20m5-16v12m5-8v4" stroke="#fff6e7" stroke-width="2.4" stroke-linecap="round"/></svg>Keepsay</header><main><h1>Hear a familiar voice.</h1><p>Turn a written message into a keepsake using a recording you have permission to use.</p>
-<form id="studio"><fieldset><legend><span class="step">1</span> Choose a voice</legend><label><input type="checkbox" id="permission" required> I have the right to use this person’s voice and permission to send the sample to Sarvam for synthesis.</label>
-<label for="file">Audio or video recording</label><input id="file" type="file" accept="audio/*,video/*,.opus,.m4a,.mkv" required><small>Up to 64 MB. Choose one person speaking clearly, without music.</small>
-<label for="start">Start at second <input type="number" id="start" value="0" min="0" max="86400" step=".1"></label>
+</style><header><svg aria-hidden="true" viewBox="0 0 32 32"><rect width="32" height="32" rx="9" fill="currentColor"/><path d="M6 15v3m5-8v13m5-17v20m5-16v12m5-8v4" stroke="#fff6e7" stroke-width="2.4" stroke-linecap="round"/></svg>Keepsay</header><main><h1>Hear your words in a voice you love.</h1><p>Choose a voice note or video of someone you love. Type the message you want to hear, and Keepsay will read it aloud in an AI recreation of their voice.</p>
+<form id="studio"><fieldset><legend><span class="step">1</span> Choose a recording</legend><label><input type="checkbox" id="permission" required> I have the right to use this person’s voice and permission to send the sample to Sarvam for synthesis.</label>
+<label for="file">Audio or video recording</label><input id="file" type="file" accept="audio/*,video/*,.opus,.m4a,.mkv" required><small>Up to 64 MB. Pick a moment with one clear speaker. Preview up to 15 seconds before creating your message.</small>
+<label for="start">Start the sample at (seconds) <input type="number" id="start" value="0" min="0" max="86400" step=".1"></label>
 <button type="button" class="secondary" id="prepare">Preview voice sample</button><div id="preview"></div></fieldset>
 <fieldset><legend><span class="step">2</span> Write the message</legend><label for="message">Words to read aloud <small class="counter" id="count" aria-hidden="true">0 / 1,000</small></label><textarea id="message" rows="3" maxlength="1000" required placeholder="I’m thinking of you today."></textarea><small>Up to 1,000 characters. Your words are sent as written.</small></fieldset>
 <button id="generate">Create spoken message</button> <button type="reset" class="secondary">Clear</button></form>
