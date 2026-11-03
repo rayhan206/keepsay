@@ -1,6 +1,30 @@
 # Keepsay
 
-Hear a written message in a familiar voice. Choose a recording, preview a short sample of the speaker, and play an AI-generated reading of your own words. Keepsay runs on your computer and uses Sarvam for synthesis.
+Keepsay lets you hear a written message in a familiar voice. Choose an audio or video recording of someone whose voice you have permission to use, then type or paste the words you want to hear. Keepsay makes an AI-generated reading and labels it as such in the player.
+
+## Why use it?
+
+When you live far from home, a parent’s “Did you eat yet?” can sound different from the same four words on a screen. Keepsay lets you pair a family voice note with a text like that, or hear a goodnight message in a long-distance partner’s voice. For remembrance, you might pair an old family video with a line from a letter that person wrote.
+
+You choose the words and the reference voice independently. A message can come from a chat, a handwritten card you transcribe, or something you write yourself.
+
+## What you can do
+
+1. **Find the voice in a recording.** Open a voice note, audio file, or video up to 64 MiB. Enter the second where the person starts speaking. This lets you use a short passage from a longer recording.
+2. **Listen before generating.** Preview up to 15 seconds locally and adjust the start time until you hear one clear speaker. A 10–15 second passage with little music or background noise works best.
+3. **Give the voice your words.** Paste up to 1,000 characters and select **Create spoken message**. A character counter shows how much room you have. Keepsay reads the text you supply.
+4. **Play it back.** Listen, pause, or replay using the audio controls. Try another message with the same voice sample, or select **Clear** to remove the sample, text, and result from the page.
+
+## How it works
+
+| Feature | Implementation |
+| --- | --- |
+| Recording picker and playback | HTML, CSS, and JavaScript provide labeled controls, a clip preview, and a browser audio player. |
+| Voice extraction | FFmpeg runs on your computer. It extracts the chosen passage, reduces background noise, adjusts volume, and prepares a mono 16 kHz WAV sample. |
+| Message validation | A Python FastAPI server and Pydantic validate the submitted message and permission flag. The server also checks the WAV format and duration before synthesis. |
+| Familiar-voice reading | The server calls Sarvam Instant Voice Cloning through the asynchronous Python SDK. It sends the short reference clip and your text together, requests an MP3, and returns it to the browser for playback. |
+
+The original recording stays on your computer. Selecting **Create spoken message** sends the prepared sample and text to Sarvam using your server-side API key. Keepsay uses an inline reference for each generation and keeps no voice-profile database or message history. [Sarvam Instant Voice Cloning documentation](https://docs.sarvam.ai/api/api-guides-tutorials/voice-cloning/overview)
 
 ## Run locally
 
@@ -19,44 +43,3 @@ On first setup, open the new .env and enter your key after SARVAM_API_KEY=. If y
 ~~~
 
 Open [Keepsay on localhost](http://127.0.0.1:8765). On macOS or Linux use the virtual environment’s bin/python executable. FFmpeg comes with the imageio-ffmpeg package on supported platforms. To use an existing FFmpeg executable, set FFMPEG_BINARY to its absolute path in .env.
-
-## Make a keepsake
-
-1. Choose a recording you have permission to use. Audio files, WhatsApp Opus notes and videos with an audio track are supported. The upload limit is 64 MiB.
-2. Enter the second where the speaker begins. Select **Preview voice sample** and listen for clear solo speech. Aim for 10–15 seconds. Keepsay extracts up to 15 seconds and rejects clips shorter than 3 seconds.
-3. Paste up to 1,000 characters and select **Create spoken message**. When it is ready, press play. You can write another message using the same sample, or select **Clear** to reset the form and release its audio players.
-
-## How Keepsay uses Sarvam
-
-Preview stays local. The browser sends the source recording to the local FastAPI route POST /clip. FFmpeg selects the first audio track, applies a high-pass filter, noise reduction and normalization, and returns a mono 16 kHz WAV. Temporary media files are removed when extraction finishes.
-
-Generation calls POST /speak. The server validates the message, permission flag and WAV, then reads the API key from the environment or local .env. Only the reference clip and message go to Sarvam. The one-shot Instant Voice Cloning call in studio.py uses the asynchronous Python SDK:
-
-~~~python
-audio = await client.voice_cloning.convert(
-    text=message.text,
-    ref_audio=("reference.wav", clip, "audio/wav"),
-    output_audio_codec="mp3",
-    enable_cached_responses=False,
-    request_options={"max_retries": 0},
-)
-~~~
-
-The inline reference supplies the voice on each request. Keepsay creates no persistent voice profile. It leaves language detection to Sarvam and passes the typed words directly to synthesis. The server decodes the returned base64 audio and sends an MP3 to the browser. Generation is billed by Sarvam. [Official Instant Voice Cloning guide](https://docs.sarvam.ai/api/api-guides-tutorials/voice-cloning/overview)
-
-## Privacy and operating limits
-
-The key stays on the server. Responses disable browser caching. Keepsay has no database, account system or message history. **Clear** resets local browser state; Sarvam handles submitted samples under its own service terms. The local server accepts loopback hosts and allows two concurrent processing requests. Keep it bound to loopback for personal use.
-
-If preview fails, check that the file has an audio track and move the start time earlier. If generation fails after a successful preview, check the key, cloning access and credits. If the voice sounds unclear, choose a passage with one speaker and less music or background speech.
-
-## Source map
-
-| File | Responsibility |
-| --- | --- |
-| keepsay.html | Accessible recording picker, preview, message editor and audio playback |
-| studio.py | Local HTTP routes, FFmpeg extraction and Sarvam integration |
-| models.py | Typed request validation |
-| requirements.txt | Python runtime dependencies |
-
-The app has been exercised with synthetic speech through a live Sarvam request and browser playback. Voice resemblance depends on the source recording and has not been independently scored.
